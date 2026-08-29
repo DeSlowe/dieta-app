@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PatientProvider } from "./context/PatientContext";
+import { FolderProvider } from "./context/FolderContext";
 import Home from "./pages/Home";
 import PatientList from "./pages/PatientList";
 import NewPatientForm from "./pages/NewPatientForm";
@@ -56,7 +57,9 @@ function AppContent() {
 export default function App() {
   return (
     <PatientProvider>
-      <AppContent />
+      <FolderProvider>
+        <AppContent />
+      </FolderProvider>
     </PatientProvider>
   );
 }

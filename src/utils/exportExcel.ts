@@ -1,12 +1,13 @@
 import * as XLSX from "xlsx";
 import { Patient } from "../models/Patient";
 import { MEAL_LABELS, MealType } from "../models/Food";
+import { verifyPermission } from "./folderStorage";
 
 function sanitizeSheetName(name: string) {
   return name.replace(/[\\/?*[\]:]/g, "-").slice(0, 31);
 }
 
-export function exportPatientToExcel(patient: Patient) {
+function buildWorkbook(patient: Patient): XLSX.WorkBook {
   const wb = XLSX.utils.book_new();
 
   const anagraficaRows = [
@@ -53,6 +54,31 @@ export function exportPatientToExcel(patient: Patient) {
   const wsDieta = XLSX.utils.aoa_to_sheet(dietRows);
   XLSX.utils.book_append_sheet(wb, wsDieta, sheetName);
 
+  return wb;
+}
+
+export type ExportResult = { savedTo: "folder" | "download"; fileName: string };
+
+export async function exportPatientToExcel(
+  patient: Patient,
+  folderHandle?: FileSystemDirectoryHandle | null
+): Promise<ExportResult> {
+  const wb = buildWorkbook(patient);
   const fileName = `${patient.cognome}_${patient.nome}_dieta.xlsx`.replace(/\s+/g, "_");
+
+  if (folderHandle) {
+    const ok = await verifyPermission(folderHandle, true, true);
+    if (ok) {
+      const arrayBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const fileHandle = await folderHandle.getFileHandle(fileName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(arrayBuffer);
+      await writable.close();
+      return { savedTo: "folder", fileName };
+    }
+  }
+
+  // Fallback: nessuna cartella scelta o permesso negato -> download normale del browser
   XLSX.writeFile(wb, fileName);
+  return { savedTo: "download", fileName };
 }

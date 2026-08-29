@@ -1,4 +1,5 @@
-import { User, Salad, ArrowLeft, FileDown } from "lucide-react";
+import { User, Salad, ArrowLeft, FileDown, FolderOpen, FolderCheck } from "lucide-react";
+import { useFolder } from "../../context/FolderContext";
 
 type Tab = "anagrafica" | "dieta";
 
@@ -11,6 +12,8 @@ type Props = {
 };
 
 export default function Sidebar({ activeTab, onTabChange, onBack, onExport, patientName }: Props) {
+  const { folderName, supported, pickFolder } = useFolder();
+
   return (
     <div className="w-56 bg-white border-r min-h-screen p-4 flex flex-col">
       <button
@@ -41,12 +44,34 @@ export default function Sidebar({ activeTab, onTabChange, onBack, onExport, pati
         </button>
       </nav>
 
-      <button
-        onClick={onExport}
-        className="mt-auto flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-      >
-        <FileDown className="w-4 h-4" /> Esporta Excel
-      </button>
+      <div className="mt-auto space-y-2">
+        {supported && (
+          <button
+            onClick={pickFolder}
+            title={folderName ?? undefined}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-sm text-slate-600 hover:bg-slate-50"
+          >
+            {folderName ? (
+              <>
+                <FolderCheck className="w-4 h-4 text-green-600 shrink-0" />
+                <span className="truncate">{folderName}</span>
+              </>
+            ) : (
+              <>
+                <FolderOpen className="w-4 h-4 shrink-0" />
+                <span>Scegli cartella</span>
+              </>
+            )}
+          </button>
+        )}
+
+        <button
+          onClick={onExport}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+        >
+          <FileDown className="w-4 h-4" /> Esporta Excel
+        </button>
+      </div>
     </div>
   );
 }
