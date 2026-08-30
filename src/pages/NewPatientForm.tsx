@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { usePatients } from "../context/PatientContext";
 import { DietTargets } from "../models/Patient";
@@ -17,6 +17,14 @@ const defaultTargets: DietTargets = {
   fiber: 30,
 };
 
+const TARGET_LABELS: Record<keyof DietTargets, string> = {
+  kcal: "Kcal",
+  proteins: "Proteine (g)",
+  carbs: "Carboidrati (g)",
+  fats: "Grassi (g)",
+  fiber: "Fibre (g)",
+};
+
 export default function NewPatientForm({ onCreated, onCancel }: Props) {
   const { addPatient } = usePatients();
 
@@ -26,6 +34,15 @@ export default function NewPatientForm({ onCreated, onCancel }: Props) {
   const [peso, setPeso] = useState<number>(70);
   const [altezza, setAltezza] = useState<number>(170);
   const [targets, setTargets] = useState<DietTargets>(defaultTargets);
+
+  // Kcal ricalcolate in tempo reale: proteine 4 kcal/g, carboidrati 4 kcal/g, grassi 9 kcal/g
+  useEffect(() => {
+    const kcal = targets.proteins * 4 + targets.carbs * 4 + targets.fats * 9;
+    if (kcal !== targets.kcal) {
+      setTargets((t) => ({ ...t, kcal }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targets.proteins, targets.carbs, targets.fats]);
 
   const isValid = nome.trim() !== "" && cognome.trim() !== "";
 
@@ -110,21 +127,28 @@ export default function NewPatientForm({ onCreated, onCancel }: Props) {
             </div>
           </div>
 
-          <h2 className="text-sm font-semibold text-slate-500 uppercase mb-3">
+          <h2 className="text-sm font-semibold text-slate-500 uppercase mb-1">
             Target dieta giornalieri
           </h2>
+          <p className="text-xs text-slate-400 mb-3">
+            Le Kcal si calcolano automaticamente (proteine e carboidrati 4 kcal/g, grassi 9 kcal/g)
+          </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
             {(Object.keys(targets) as (keyof DietTargets)[]).map((key) => (
               <div key={key}>
-                <label className="block text-sm mb-1 capitalize">{key}</label>
+                <label className="block text-sm mb-1">{TARGET_LABELS[key]}</label>
                 <input
                   type="number"
                   min={0}
-                  value={targets[key]}
+                  value={key === "kcal" ? Math.round(targets.kcal) : targets[key]}
+                  readOnly={key === "kcal"}
+                  disabled={key === "kcal"}
                   onChange={(e) =>
                     setTargets({ ...targets, [key]: Number(e.target.value) })
                   }
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className={`w-full px-3 py-2 border rounded-lg ${
+                    key === "kcal" ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""
+                  }`}
                 />
               </div>
             ))}

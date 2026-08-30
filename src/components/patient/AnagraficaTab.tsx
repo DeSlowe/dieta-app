@@ -1,9 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePatients } from "../../context/PatientContext";
 import { Patient, DietTargets } from "../../models/Patient";
 
 type Props = {
   patient: Patient;
+};
+
+const TARGET_LABELS: Record<keyof DietTargets, string> = {
+  kcal: "Kcal",
+  proteins: "Proteine (g)",
+  carbs: "Carboidrati (g)",
+  fats: "Grassi (g)",
+  fiber: "Fibre (g)",
 };
 
 export default function AnagraficaTab({ patient }: Props) {
@@ -17,6 +25,15 @@ export default function AnagraficaTab({ patient }: Props) {
     targets: patient.targets,
   });
   const [saved, setSaved] = useState(false);
+
+  // Kcal ricalcolate in tempo reale: proteine 4 kcal/g, carboidrati 4 kcal/g, grassi 9 kcal/g
+  useEffect(() => {
+    const kcal = form.targets.proteins * 4 + form.targets.carbs * 4 + form.targets.fats * 9;
+    if (kcal !== form.targets.kcal) {
+      setForm((f) => ({ ...f, targets: { ...f.targets, kcal } }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.targets.proteins, form.targets.carbs, form.targets.fats]);
 
   const handleSave = () => {
     updatePatient(patient.id, (p) => ({ ...p, ...form }));
@@ -78,18 +95,25 @@ export default function AnagraficaTab({ patient }: Props) {
           </div>
         </div>
 
-        <h2 className="text-sm font-semibold text-slate-500 uppercase mb-3">Target dieta giornalieri</h2>
+        <h2 className="text-sm font-semibold text-slate-500 uppercase mb-1">Target dieta giornalieri</h2>
+        <p className="text-xs text-slate-400 mb-3">
+          Le Kcal si calcolano automaticamente (proteine e carboidrati 4 kcal/g, grassi 9 kcal/g)
+        </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
           {(Object.keys(form.targets) as (keyof DietTargets)[]).map((key) => (
             <div key={key}>
-              <label className="block text-sm mb-1 capitalize">{key}</label>
+              <label className="block text-sm mb-1">{TARGET_LABELS[key]}</label>
               <input
                 type="number"
-                value={form.targets[key]}
+                value={key === "kcal" ? Math.round(form.targets.kcal) : form.targets[key]}
+                readOnly={key === "kcal"}
+                disabled={key === "kcal"}
                 onChange={(e) =>
                   setForm({ ...form, targets: { ...form.targets, [key]: Number(e.target.value) } })
                 }
-                className="w-full px-3 py-2 border rounded-lg"
+                className={`w-full px-3 py-2 border rounded-lg ${
+                  key === "kcal" ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""
+                }`}
               />
             </div>
           ))}
