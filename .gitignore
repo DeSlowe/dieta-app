@@ -23,3 +23,5 @@ rad.json
 TestResults.xml
 #launch.json folder
 node_modules/
+dist/
+*.zip/

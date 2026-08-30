@@ -4,6 +4,7 @@ import { DietDay, Food, MealType, emptyMeals } from "../models/Food";
 export function usePatientDiet(patientId: string) {
   const { getPatient, updatePatient } = usePatients();
   const patient = getPatient(patientId);
+  const days = patient?.days ?? [];
 
   const addDay = () => {
     updatePatient(patientId, (p) => {
@@ -71,5 +72,21 @@ export function usePatientDiet(patientId: string) {
     }));
   };
 
-  return { days: patient?.days ?? [], addDay, removeDay, addFood, removeItem, updateQuantity };
+  // Sostituisce interamente i giorni del paziente (usato dall'import Excel)
+  const importDays = (importedDays: DietDay[]) => {
+    updatePatient(patientId, (p) => ({ ...p, days: importedDays }));
+  };
+
+  const hasAnyFood = days.some((d) => Object.values(d.meals).some((items) => items.length > 0));
+
+  return {
+    days,
+    addDay,
+    removeDay,
+    addFood,
+    removeItem,
+    updateQuantity,
+    importDays,
+    hasAnyFood,
+  };
 }

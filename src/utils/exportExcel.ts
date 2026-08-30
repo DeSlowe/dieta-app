@@ -7,7 +7,11 @@ function sanitizeSheetName(name: string) {
   return name.replace(/[\\/?*[\]:]/g, "-").slice(0, 31);
 }
 
-function buildWorkbook(patient: Patient): XLSX.WorkBook {
+function formatDateForFile(date: Date) {
+  return date.toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+function buildWorkbook(patient: Patient, exportDate: Date): XLSX.WorkBook {
   const wb = XLSX.utils.book_new();
 
   const anagraficaRows = [
@@ -26,8 +30,11 @@ function buildWorkbook(patient: Patient): XLSX.WorkBook {
   const wsAnagrafica = XLSX.utils.aoa_to_sheet(anagraficaRows);
   XLSX.utils.book_append_sheet(wb, wsAnagrafica, "Anagrafica");
 
+  // "Chiave Pasto" = colazione/spuntino1/pranzo/spuntino2/cena, necessaria per
+  // ridistinguere i due Spuntino in fase di import (la colonna "Pasto" è solo
+  // l'etichetta italiana e i due spuntini condividono la stessa etichetta).
   const dietRows: (string | number)[][] = [
-    ["Giorno", "Pasto", "Alimento", "Porzione (g)", "Kcal", "Proteine (g)", "Carboidrati (g)", "Grassi (g)", "Fibre (g)"],
+    ["Giorno", "Pasto", "Chiave Pasto", "Alimento", "Porzione (g)", "Kcal", "Proteine (g)", "Carboidrati (g)", "Grassi (g)", "Fibre (g)"],
   ];
 
   patient.days.forEach((day) => {
@@ -37,6 +44,7 @@ function buildWorkbook(patient: Patient): XLSX.WorkBook {
         dietRows.push([
           day.label,
           MEAL_LABELS[mealKey],
+          mealKey,
           item.food.name,
           item.quantity,
           Number((item.food.energy_kcal * factor).toFixed(0)),
@@ -49,8 +57,8 @@ function buildWorkbook(patient: Patient): XLSX.WorkBook {
     });
   });
 
-  const dietDate = new Date(patient.dietCreatedAt).toLocaleDateString("it-IT").replace(/\//g, "-");
-  const sheetName = sanitizeSheetName(`Dieta_${dietDate}`);
+  const dateStr = formatDateForFile(exportDate);
+  const sheetName = sanitizeSheetName(`Dieta_${dateStr}`);
   const wsDieta = XLSX.utils.aoa_to_sheet(dietRows);
   XLSX.utils.book_append_sheet(wb, wsDieta, sheetName);
 
@@ -63,8 +71,10 @@ export async function exportPatientToExcel(
   patient: Patient,
   folderHandle?: FileSystemDirectoryHandle | null
 ): Promise<ExportResult> {
-  const wb = buildWorkbook(patient);
-  const fileName = `${patient.cognome}_${patient.nome}_dieta.xlsx`.replace(/\s+/g, "_");
+  const exportDate = new Date();
+  const wb = buildWorkbook(patient, exportDate);
+  const dateStr = formatDateForFile(exportDate);
+  const fileName = `${patient.cognome}_${patient.nome}_dieta_${dateStr}.xlsx`.replace(/\s+/g, "_");
 
   if (folderHandle) {
     const ok = await verifyPermission(folderHandle, true, true);
@@ -78,7 +88,6 @@ export async function exportPatientToExcel(
     }
   }
 
-  // Fallback: nessuna cartella scelta o permesso negato -> download normale del browser
   XLSX.writeFile(wb, fileName);
   return { savedTo: "download", fileName };
 }
